@@ -115,7 +115,7 @@ typedef struct{
 }robotPhyParam;
 
 
-NHK2024_Low_Pass_Filter_Settings* gLPFsettings;
+Low_Pass_Filter_Settings* gLPFsettings;
 robotPosStatus gRobotPos;
 motor gMotors[4];
 robotPhyParam gRobotPhy;
@@ -205,10 +205,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Error_Handler();
 			}
 			if(fdcan1_RxHeader.Identifier == CANID_ROBOT_VEL){
-				if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
-				{
-					Error_Handler();
-				}
+//				if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+//				{
+//					Error_Handler();
+//				}
 
 				float gain[3] = {16, 16, 0.02};
 				for(uint8_t i=0; i<3; i++){
@@ -653,8 +653,8 @@ void CAN_Motordrive(int32_t vel[])
 	uint8_t TxData[8];
 	for(i=0; i<4; i++){
 
-		if(vel[i]<-1*M2006_CURRENT_LIMIT)vel[i]=-1*M2006_CURRENT_LIMIT;
-		else if(vel[i]>M2006_CURRENT_LIMIT)vel[i]=M2006_CURRENT_LIMIT;
+		if(vel[i]<-1*M3508_CURRENT_LIMIT)vel[i]=-1*M3508_CURRENT_LIMIT;
+		else if(vel[i]>M3508_CURRENT_LIMIT)vel[i]=M3508_CURRENT_LIMIT;
 		TxData[i*2]=vel[i]>>8;//上位ビ
 		TxData[i*2+1]=vel[i]&0x00FF;//下位ビ
 	}
@@ -702,7 +702,7 @@ void RobotControllerInit(void){
 }
 
 void MotorControllerInit(void){
-	double kp[4] = {10, 10, 10mi, 10};
+	double kp[4] = {10, 10, 10, 10};
 	double ki[4] = {0, 0, 0, 0};
 	double kd[4] = {0, 0, 0, 0};
 	double integral_min[4] = {-30, -30, -30, -30};
