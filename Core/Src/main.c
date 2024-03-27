@@ -199,7 +199,7 @@ void ForwardKinematics(robotPosStatus *robotPos, wheel wheel[], robotPhyParam *r
 //Call Back
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
 	if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
-		//printf("FIFO0 callback\r\n");
+		printf("FIFO0 callback\r\n");
 		if(hfdcan == &hfdcan1){
 			if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &fdcan1_RxHeader, fdcan1_RxData) != HAL_OK) {
 				Error_Handler();
@@ -222,7 +222,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 }
 
 void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs) {
-	//printf("FIFO1 callback\r\n");
+	printf("FIFO1 callback\r\n");
 	if ((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != RESET) {
 		if (hfdcan == &hfdcan3) {
 			if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO1, &fdcan3_RxHeader, fdcan3_RxData) != HAL_OK) {
@@ -244,9 +244,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-
 	if(htim == &htim17){
-		//printf("Timer callback\r\n");
 		int32_t output[4];
 
 
@@ -331,10 +329,10 @@ int main(void)
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   RobotControllerInit();
-    MotorControllerInit();
-    RobotPhyParamInit();
-    printf("Initialized\r\n");
-    HAL_TIM_Base_Start_IT(&htim17);
+  MotorControllerInit();
+  RobotPhyParamInit();
+  printf("Initialized\r\n");
+  HAL_TIM_Base_Start_IT(&htim17);
 
   /* USER CODE END 2 */
 
@@ -491,15 +489,15 @@ static void MX_FDCAN3_Init(void)
   hfdcan3.Init.AutoRetransmission = DISABLE;
   hfdcan3.Init.TransmitPause = DISABLE;
   hfdcan3.Init.ProtocolException = DISABLE;
-  hfdcan3.Init.NominalPrescaler = 16;
+  hfdcan3.Init.NominalPrescaler = 4;
   hfdcan3.Init.NominalSyncJumpWidth = 1;
-  hfdcan3.Init.NominalTimeSeg1 = 2;
-  hfdcan3.Init.NominalTimeSeg2 = 2;
+  hfdcan3.Init.NominalTimeSeg1 = 15;
+  hfdcan3.Init.NominalTimeSeg2 = 4;
   hfdcan3.Init.DataPrescaler = 1;
   hfdcan3.Init.DataSyncJumpWidth = 1;
   hfdcan3.Init.DataTimeSeg1 = 1;
   hfdcan3.Init.DataTimeSeg2 = 1;
-  hfdcan3.Init.StdFiltersNbr = 0;
+  hfdcan3.Init.StdFiltersNbr = 1;
   hfdcan3.Init.ExtFiltersNbr = 0;
   hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
   if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK)
@@ -668,7 +666,7 @@ void CAN_Motordrive(int32_t vel[])
 	fdcan3_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 	fdcan3_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 	fdcan3_TxHeader.MessageMarker = 0;
-	fdcan3_TxHeader.Identifier = DJI_CANID_TX0;
+	fdcan3_TxHeader.Identifier = DJI_CANID_TX1;
 
 	if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &fdcan3_TxHeader, TxData) != HAL_OK) {
 		/* Transmission request Error */
