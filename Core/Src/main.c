@@ -45,9 +45,9 @@
 /* USER CODE BEGIN PM */
 #define PI 3.14159265
 
-#define WHEEL_DIAMETER 100 //[mm]
-#define WHEELBASE_LEN 260 //[mm]
-#define TREAD_LEN 245//[mm]
+#define WHEEL_DIAMETER 152 //[mm]
+#define WHEELBASE_LEN 505 //[mm]
+#define TREAD_LEN 505 //[mm]
 
 #define M3508_CURRENT_LIMIT 10000
 
@@ -199,37 +199,42 @@ void ForwardKinematics(robotPosStatus *robotPos, wheel wheel[], robotPhyParam *r
 //Call Back
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
 	if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
-		printf("FIFO0 callback\r\n");
 		if(hfdcan == &hfdcan1){
 			if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &fdcan1_RxHeader, fdcan1_RxData) != HAL_OK) {
 				Error_Handler();
 			}
+//			printf("Recived\r\n");
+//			printf("%d, %d, %d\r\n", fdcan1_RxData[0], fdcan1_RxData[1], fdcan1_RxData[2]);
 			if(fdcan1_RxHeader.Identifier == CANID_ROBOT_VEL){
-//				if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
-//				{
-//					Error_Handler();
-//				}
-
-				float gain[3] = {16, 16, 0.02};
+//			  printf("Recived\r\n");
+				float gain[3] = {8, 8, 0.007};
 				for(uint8_t i=0; i<3; i++){
 					gRobotPos.trgVel[i] = (fdcan1_RxData[i] - 127)*gain[i];
 				}
 			}
 
+			if(fdcan1_RxHeader.Identifier == CANID_CHECK_IS_ACTIVE) {
+//			    if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+//          {
+//            Error_Handler();
+//          }
+//			    printf("Recived\r\n");
+			}
 			//printf("RxData: %x\r\n", fdcan1_RxData[0]);
 		}
 	}
 }
 
 void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs) {
-	printf("FIFO1 callback\r\n");
+//	printf("FIFO1 callback\r\n");
 	if ((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != RESET) {
 		if (hfdcan == &hfdcan3) {
 			if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO1, &fdcan3_RxHeader, fdcan3_RxData) != HAL_OK) {
 				Error_Handler();
 			}
 
-			uint8_t motorID = fdcan3_RxHeader.Identifier - DJI_CANID_TX0 - 1;
+			uint8_t motorID = fdcan3_RxHeader.Identifier - DJI_CANID_TX0 - -1 - 6;
+//			printf("%d\r\n", motorID);
 			if(motorID<4){
 				int16_t intbuff;
 				//get actual angle velocity of motor from C610
@@ -238,6 +243,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 				//get actual torque current of motor
 				intbuff = fdcan3_RxData[4]<<8 | fdcan3_RxData[5];
 				gMotors[motorID].actCurrent = (double)intbuff;
+
 			}
 		}
 	}
@@ -245,6 +251,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim == &htim17){
+//	  printf("kfoerkofkreofe\r\n");
 		int32_t output[4];
 
 
@@ -265,7 +272,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			output[i] = pid_compute(&gMotors[i].velPID, gMotors[i].actVel);
 		}
 
+//		printf("%f, %f, %f, %f", 0, &gMotors[i].velPID, gMotors[i].actVel, 254)
+
 		//transmit to C610
+//		printf("%f, %f, %f, %f\r\n", 0.0, (double)(gMotors[0].trgVel),(double)(gMotors[0].actVel), 300.0);
+//		printf("%f, %f, %f, %f\r\n", gMotors[0].velPID.last_error, gMotors[1].velPID.last_error, gMotors[2].velPID.last_error, gMotors[3].velPID.last_error);
 		CAN_Motordrive(output);
 		RobotVelFB();
 	}
@@ -433,10 +444,10 @@ static void MX_FDCAN1_Init(void)
   FDCAN_FilterTypeDef sFilterConfig;
   	sFilterConfig.IdType = FDCAN_STANDARD_ID;
   	sFilterConfig.FilterIndex = 0;
-  	sFilterConfig.FilterType = FDCAN_FILTER_MASK;
+  	sFilterConfig.FilterType = FDCAN_FILTER_RANGE;
   	sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-  	sFilterConfig.FilterID1 = CANID_ROBOT_VEL;
-  	sFilterConfig.FilterID2 = 0b11111111111;
+  	sFilterConfig.FilterID1 = 0x000;
+  	sFilterConfig.FilterID2 = 0x7ff;
 
   	if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) {
   		Error_Handler();
@@ -670,6 +681,8 @@ void CAN_Motordrive(int32_t vel[])
 
 	if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &fdcan3_TxHeader, TxData) != HAL_OK) {
 		/* Transmission request Error */
+//	  printf("HAL_FDCAN_AddMessageToTxFifoQ\r\n");
+//	  printf("error code is %d\r\n", hfdcan3.ErrorCode);
 		Error_Handler();
 	}
 }
@@ -682,7 +695,7 @@ int _write(int file, char *ptr, int len)
 
 void RobotControllerInit(void){
 	double velKp[3] = {0.3, 0.3, 1.6};
-	double velKi[3] = {0, 0, 0.1};
+	double velKi[3] = {0, 0, 0};
 	double velKd[3] = {0, 0, 0};
 	double velIntegral_min[3] = {-5, -5, -3};
 	double velIntegral_max[3] = {5, 5, 	3};
@@ -700,9 +713,9 @@ void RobotControllerInit(void){
 }
 
 void MotorControllerInit(void){
-	double kp[4] = {10, 10, 10, 10};
+	double kp[4] = {5, 5, 5, 5};
 	double ki[4] = {0, 0, 0, 0};
-	double kd[4] = {0, 0, 0, 0};
+	double kd[4] = {0.1, 0.1, 0.1,0.1};
 	double integral_min[4] = {-30, -30, -30, -30};
 	double integral_max[4] = {30, 30, 30, 30};
 
@@ -714,7 +727,7 @@ void MotorControllerInit(void){
 		gMotors[i].outVel = 0;
 		gMotors[i].angle = 0;
 		gMotors[i].motorID = 0;
-		gMotors[i].reductionRatio = 36;
+		gMotors[i].reductionRatio = 19;
 		pid_init(&gMotors[i].velPID, CONTROL_CYCLE, kp[i], kd[i], ki[i], 0, integral_min[i], integral_max[i]);
 	}
 
@@ -751,6 +764,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+//      printf("error handler");
   }
   /* USER CODE END Error_Handler_Debug */
 }
