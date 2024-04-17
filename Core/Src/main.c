@@ -61,6 +61,8 @@
 FDCAN_HandleTypeDef hfdcan1;
 FDCAN_HandleTypeDef hfdcan3;
 
+IWDG_HandleTypeDef hiwdg;
+
 UART_HandleTypeDef hlpuart1;
 
 TIM_HandleTypeDef htim17;
@@ -129,6 +131,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_FDCAN3_Init(void);
 static void MX_TIM17_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 void RobotControllerInit(void);
 void MotorControllerInit(void);
@@ -214,11 +217,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			}
 
 			if(fdcan1_RxHeader.Identifier == CANID_CHECK_IS_ACTIVE) {
-//			    if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
-//          {
-//            Error_Handler();
-//          }
-//			    printf("Recived\r\n");
+			    if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+          {
+            Error_Handler();
+          }
 			}
 			//printf("RxData: %x\r\n", fdcan1_RxData[0]);
 		}
@@ -338,6 +340,7 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_FDCAN3_Init();
   MX_TIM17_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   RobotControllerInit();
   MotorControllerInit();
@@ -374,8 +377,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV1;
@@ -544,6 +548,35 @@ static void MX_FDCAN3_Init(void)
 }
 
 /**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+  hiwdg.Init.Window = 999;
+  hiwdg.Init.Reload = 999;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
+
+}
+
+/**
   * @brief LPUART1 Initialization Function
   * @param None
   * @retval None
@@ -637,10 +670,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, CYL_ELV_U_Pin|CYL_ELV_D_Pin|CYL_HND1_O_Pin|CYL_HND1_C_Pin
                           |CYL_HND2_O_Pin|CYL_HND2_C_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(BoardLED_GPIO_Port, BoardLED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : CYL_ELV_U_Pin CYL_ELV_D_Pin CYL_HND1_O_Pin CYL_HND1_C_Pin
                            CYL_HND2_O_Pin CYL_HND2_C_Pin */
@@ -650,6 +687,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BoardLED_Pin */
+  GPIO_InitStruct.Pin = BoardLED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(BoardLED_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -761,6 +805,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  HAL_GPIO_WritePin(BoardLED_GPIO_Port, BoardLED_Pin, GPIO_PIN_SET);
   __disable_irq();
   while (1)
   {
